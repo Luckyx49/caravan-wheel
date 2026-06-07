@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Caravan Wheel Picker</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header>
+    <div class="header-inner">
+      <div class="header-emblem">🏕️</div>
+      <div class="header-text">
+        <h1>Caravan Wheel</h1>
+        <p class="tagline">Fate decides who leads the journey</p>
+      </div>
+      <!-- Admin lock/unlock button (top-right) -->
+      <button id="adminToggleBtn" class="btn btn-ghost btn-sm admin-toggle" onclick="toggleAdminPrompt()">
+        🔒 Admin
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== MAIN LAYOUT ===== -->
+  <main>
+
+    <!-- LEFT PANEL: Wheel + Controls -->
+    <section class="wheel-panel">
+
+      <div class="canvas-wrap">
+        <canvas id="wheelCanvas" width="400" height="400"></canvas>
+        <div class="pointer">▼</div>
+      </div>
+
+      <p id="spinStatus" class="spin-status">Ready to spin</p>
+
+      <div class="spin-buttons">
+        <button id="btnLeader" class="btn btn-leader" onclick="spinFor('leader')">
+          🧭 Spin — Caravan Leader
+        </button>
+        <button id="btnVip" class="btn btn-vip" onclick="spinFor('vip')" disabled>
+          🛡️ Spin — VIP / Guard
+        </button>
+      </div>
+
+      <!-- Admin-only actions (hidden until unlocked) -->
+      <div id="adminActions" class="action-row admin-only" style="display:none">
+        <button class="btn btn-ghost" onclick="resetStats()">↺ Reset Stats</button>
+        <button class="btn btn-ghost btn-danger" onclick="confirmClearAll()">🗑 Clear All</button>
+      </div>
+
+    </section>
+
+    <!-- RIGHT PANEL: Name list management -->
+    <section class="names-panel">
+
+      <h2>Participants <span id="nameCount" class="badge">0</span></h2>
+
+      <!-- Admin-only import area -->
+      <div id="importSection" class="admin-only" style="display:none">
+        <textarea
+          id="importBox"
+          placeholder="Paste names here, one per line, then click Import ↓"
+          rows="4"
+        ></textarea>
+        <div class="import-row">
+          <button class="btn btn-sm" onclick="importNames()">📋 Import Names</button>
+          <button class="btn btn-sm btn-ghost" onclick="clearImportBox()">Clear box</button>
+        </div>
+        <div class="add-row">
+          <input id="singleName" type="text" placeholder="Add a single name…" onkeydown="if(event.key==='Enter') addSingleName()" />
+          <button class="btn btn-sm" onclick="addSingleName()">Add</button>
+        </div>
+      </div>
+
+      <!-- Name list — always visible, delete buttons only show when admin -->
+      <div id="nameList" class="name-list"></div>
+
+    </section>
+
+  </main>
+
+  <!-- ===== MODAL BACKDROP (shared) ===== -->
+  <!-- One backdrop, content swapped per use -->
+  <div id="modalBackdrop" class="modal-overlay" style="display:none">
+
+    <!-- CELEBRATION MODAL -->
+    <div id="celebrationModal" class="modal-box" style="display:none">
+      <div class="modal-fireworks">🎉</div>
+      <h2 class="modal-title">Today's Picks!</h2>
+      <div class="modal-result">
+        <div class="result-card leader-card">
+          <span class="result-label">🧭 Caravan Leader</span>
+          <span id="modalLeader" class="result-name">—</span>
+        </div>
+        <div class="result-card vip-card">
+          <span class="result-label">🛡️ VIP / Guard</span>
+          <span id="modalVip" class="result-name">—</span>
+        </div>
+      </div>
+      <button class="btn" onclick="closeModal()">Close</button>
+    </div>
+
+    <!-- ADMIN LOGIN MODAL -->
+    <div id="adminModal" class="modal-box" style="display:none">
+      <h2 class="modal-title">🔐 Admin Access</h2>
+      <p class="modal-subtitle">Enter the admin password to unlock management features.</p>
+      <input id="adminPwInput" type="password" class="pw-input" placeholder="Password…"
+             onkeydown="if(event.key==='Enter') submitAdminPassword()" />
+      <p id="adminPwError" class="pw-error" style="display:none">Incorrect password.</p>
+      <div class="modal-btn-row">
+        <button class="btn" onclick="submitAdminPassword()">Unlock</button>
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- CONFIRM CLEAR ALL MODAL -->
+    <div id="clearAllModal" class="modal-box" style="display:none">
+      <h2 class="modal-title">⚠️ Clear Everything?</h2>
+      <p class="modal-subtitle">This will permanently delete all members and stats:</p>
+      <div id="clearAllNameList" class="confirm-name-list"></div>
+      <div class="modal-btn-row">
+        <button class="btn btn-danger-solid" onclick="executeClearAll()">Yes, Delete All</button>
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
