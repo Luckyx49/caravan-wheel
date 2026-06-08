@@ -62,22 +62,19 @@ const ALL_MODALS = ['celebrationModal','adminModal','gistSetupModal','clearModal
    ==================================================== */
 
 window.addEventListener('DOMContentLoaded', async () => {
-  // Store hashed default password on first visit
+  // Hash must be stored FIRST — admin login depends on it
   if (!localStorage.getItem(PW_HASH_KEY)) {
-    localStorage.setItem(PW_HASH_KEY, await sha256(DEFAULT_PW));
+    const h = await sha256(DEFAULT_PW);
+    localStorage.setItem(PW_HASH_KEY, h);
   }
 
-  // Load from localStorage first so UI is instant
   loadLocalStorage();
   renderAll();
 
-  // Restore admin session if previously unlocked
   if (localStorage.getItem(SESSION_KEY) === 'true') applyAdminUnlock();
 
-  // Try to pull latest data from Gist
-  await syncFromGist();
-
-  // Auto-refresh from Gist every 30 seconds so all viewers stay current
+  // Non-blocking Gist sync after UI is ready
+  syncFromGist();
   syncInterval = setInterval(syncFromGist, 30000);
 });
 
@@ -275,19 +272,30 @@ function toggleAdminPrompt() {
 }
 
 async function submitAdminPassword() {
-  const input = document.getElementById('adminPwInput');
-  const errEl = document.getElementById('adminPwError');
-  if ((await sha256(input.value)) === localStorage.getItem(PW_HASH_KEY)) {
-    input.value = '';
+  const input    = document.getElementById('adminPwInput');
+  const errEl    = document.getElementById('adminPwError');
+  const entered  = input.value;
+
+  // Guard: hash must exist (should always be true after DOMContentLoaded)
+  const storedHash = localStorage.getItem(PW_HASH_KEY);
+  if (!storedHash) {
+    errEl.textContent   = 'Password not initialised yet — please refresh the page.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const enteredHash = await sha256(entered);
+
+  if (enteredHash === storedHash) {
+    input.value         = '';
     errEl.style.display = 'none';
     closeModal();
     localStorage.setItem(SESSION_KEY, 'true');
     applyAdminUnlock();
-    // Prompt Gist setup if not yet configured
-    if (!gistConfigured()) {
-      setTimeout(() => openGistSetup(), 400);
-    }
+    // First time on this device: prompt Gist setup
+    if (!gistConfigured()) setTimeout(() => openGistSetup(), 400);
   } else {
+    errEl.textContent   = 'Incorrect password.';
     errEl.style.display = 'block';
     input.select();
   }
@@ -325,8 +333,13 @@ function openModal(id) {
 function closeModal() {
   document.getElementById('modalBackdrop').style.display = 'none';
   ALL_MODALS.forEach(m => document.getElementById(m).style.display = 'none');
-  document.getElementById('adminPwInput').value = '';
-  document.getElementById('adminPwError').style.display = 'none';
+  // Safely reset fields that may or may not be visible
+  const pwInput = document.getElementById('adminPwInput');
+  const pwError = document.getElementById('adminPwError');
+  const gistErr = document.getElementById('gistSetupError');
+  if (pwInput) pwInput.value = '';
+  if (pwError) pwError.style.display = 'none';
+  if (gistErr) gistErr.style.display = 'none';
   pendingClear = null;
 }
 
