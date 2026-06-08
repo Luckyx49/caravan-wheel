@@ -35,6 +35,10 @@ const SESSION_KEY  = 'caravan_admin_open';
 const GIST_TOKEN_KEY = 'caravan_gist_token';
 const GIST_ID_KEY    = 'caravan_gist_id';
 const GIST_FILENAME  = 'caravan_data.json';
+
+// ── Hardcode your Gist ID here so ALL users auto-sync without setup ──
+// Leave empty ('') to use only the stored value from the setup modal.
+const HARDCODED_GIST_ID = 'd90fab1805e520c348f0a63430ebabbb';
 const DEFAULT_PW   = 'qy8DRAHCaLcF';
 
 // ── State ──
@@ -92,8 +96,11 @@ async function sha256(str) {
    ==================================================== */
 
 function gistToken() { return localStorage.getItem(GIST_TOKEN_KEY) || ''; }
-function gistId()    { return localStorage.getItem(GIST_ID_KEY)    || ''; }
+// Gist ID: use hardcoded value first, fall back to stored value from setup modal
+function gistId()    { return HARDCODED_GIST_ID || localStorage.getItem(GIST_ID_KEY) || ''; }
 function gistConfigured() { return !!(gistToken() && gistId()); }
+// Read-only sync only needs a Gist ID (public Gist, no token needed)
+function gistReadable()    { return !!gistId(); }
 
 /** Set the header sync dot: 'synced' | 'local' | 'error' | 'syncing' */
 function setSyncStatus(state) {
@@ -111,15 +118,16 @@ function setSyncStatus(state) {
 
 /** Pull data from Gist and update participants if newer */
 async function syncFromGist() {
-  if (!gistConfigured()) { setSyncStatus('local'); return; }
+  // Read only needs the Gist ID — no token required if the Gist is public.
+  // Non-admin users won't have a token and that's fine.
+  const id = gistId();
+  if (!id) { setSyncStatus('local'); return; }
   setSyncStatus('syncing');
   try {
-    const res  = await fetch(`https://api.github.com/gists/${gistId()}`, {
-      headers: {
-        'Authorization': `token ${gistToken()}`,
-        'Accept': 'application/vnd.github.v3+json',
-      }
-    });
+    const headers = { 'Accept': 'application/vnd.github.v3+json' };
+    // Add token if available (avoids rate limiting, required for private Gists)
+    if (gistToken()) headers['Authorization'] = `token ${gistToken()}`;
+    const res  = await fetch(`https://api.github.com/gists/${id}`, { headers });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data    = await res.json();
     const content = data.files?.[GIST_FILENAME]?.content;
